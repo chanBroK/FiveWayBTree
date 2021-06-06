@@ -75,9 +75,8 @@ public class FiveWayBTree implements NavigableSet<Integer> {
     FiveWayBTreeNode newNode = new FiveWayBTreeNode(); // 분리한 값을 넣어줄 노드, 추후 자식 노드가 됨
 
     newNode.isLeaf = node.isLeaf; // 분리-> 리프여부는 동일
-    newNode.setParent(node.getParent());
     // 옮기기
-    for (int i = middle + 1; i < node.getKeyList().size(); i++) { // 분리할 노드에 키 담기(리프이든 아니든)
+    for (int i = middle + 1; i < node.getKeyList().size(); i++) { // 분리할 노드에 Key 담기
       newNode.getKeyList().add(node.getKeyList().get(i));
       // newNode.getKeyList().set(i - middle + 1, node.getKeyList().get(i));
       node.getKeyList().remove(i); // 새로운 노드에 키 옮기고 기존 노드에선 삭제
@@ -88,6 +87,7 @@ public class FiveWayBTree implements NavigableSet<Integer> {
       for (int i = middle + 1; i < node.getChildren().size(); i++) { // 오른쪽 노드에 현재 노드 자식 절반 담기
         // newNode.getChildren().add(i - middle + 1, node.getChildren().get(i));
         newNode.getChildren().add(node.getChildren().get(i));
+        node.getChildren().get(i).setParent(newNode);
         node.getChildren().remove(i); // 새로운 노드에 자식 옮기고 기존 노드에서 삭제
         i--;
       }
@@ -113,6 +113,7 @@ public class FiveWayBTree implements NavigableSet<Integer> {
       parent.getKeyList().add(pos, node.getKeyList().get(middle)); // 부모 노드에 넣어야될 자리에 값 넣기
       node.getKeyList().remove(middle);
       parent.getChildren().add(pos + 1, newNode); // 오른쪽만 부모노드에 연결
+      newNode.setParent(parent);
     }
     return node; //현재 노드 리턴
   }
@@ -128,6 +129,7 @@ public class FiveWayBTree implements NavigableSet<Integer> {
     for (pos = 0; pos < node.getKeyList().size(); pos++) { // 해당 KeyList에서 val 보다 높은 값 위치 찾기
       if (val == node.getKeyList().get(pos)) {
         // 중복 허용 X
+        size--;
         return node;
       } else if (val < node.getKeyList().get(pos)) { // val가 큰 값을 만났을때 정지
         break;
@@ -153,8 +155,8 @@ public class FiveWayBTree implements NavigableSet<Integer> {
     if (node == null) {
       System.out.println("Empty");
     } else {
-      System.out.printf("Level %d :    ", level);
-
+      System.out.printf("Level %d /parent ", level);
+      System.out.println(node.getParent());
       for (int i = 0; i < node.getKeyList().size(); i++) {
         System.out.printf("|%d|", node.getKeyList().get(i));
       }
@@ -225,19 +227,18 @@ public class FiveWayBTree implements NavigableSet<Integer> {
 
   @Override
   public boolean add(Integer e) {
-    if (root == null) { // 루트가 없으면
-      root = createNode(e); // root를 만들어라.
-      root.isLeaf = true; // 처음 만들어지는거니까 root이자 leaf 노드.
-    } else { // 루트가 있으면
-      root = insertNode(0, e, root, root); // 재귀 처음에는 root가 부모이자 리프노드.
-      size++;
+    size++;
+    if (root == null) { // 첫 삽입
+      root = createNode(e);
+      root.isLeaf = true; // leaf 인 root
+    } else {
+      root = insertNode(0, e, root, root); // 재귀 root가 부모이자 리프노드
     }
     return false;
   }
 
   @Override
   public boolean remove(Object o) {
-    // TODO Auto-generated method stub
     return false;
   }
 
@@ -279,12 +280,34 @@ public class FiveWayBTree implements NavigableSet<Integer> {
 
   @Override
   public Integer floor(Integer e) {
-    return 0;
+    // e 보다 작은 최대값
+    Integer max = first();
+    Iterator<Integer> iter = iterator();
+    while (iter.hasNext()) {
+      int t = iter.next();
+      if (t <= e) {
+        if (max <= t) {
+          max = t;
+        }
+      }
+    }
+    return max;
   }
 
   @Override
   public Integer ceiling(Integer e) {
-    return 0;
+    // e 보다 큰 최소값
+    Integer min = last();
+    Iterator<Integer> iter = iterator();
+    while (iter.hasNext()) {
+      int t = iter.next();
+      if (t >= e) {
+        if (min >= t) {
+          min = t;
+        }
+      }
+    }
+    return min;
   }
 
   @Override
@@ -305,104 +328,122 @@ public class FiveWayBTree implements NavigableSet<Integer> {
     return null;
   }
 
-  public class treeIterator implements Iterator {
+  // public class treeIterator implements Iterator<Integer> {
+
+  //   FiveWayBTreeNode curNode;
+  //   int idx;
+  //   Stack<Integer> pIdx = new Stack<Integer>();
+  //   int prev;
+
+  //   treeIterator() { // 시작점 : 최소값
+  //     curNode = root;
+  //     while (!curNode.isLeaf) {
+  //       pIdx.push(0);
+  //       curNode = curNode.getChildren().get(0);
+  //     }
+  //     prev = curNode.getKeyList().get(0);
+  //     idx = 0;
+  //   }
+
+  //   public boolean hasNext() {
+  //     if (curNode == null) {
+  //       return false;
+  //     }
+  //     return true;
+  //   }
+
+  //   public Integer next() {
+  //     int result = prev;
+  //     while (true) {
+  //       if (curNode.isLeaf) {
+  //         if (curNode.getKeyList().size() == idx + 1) {
+  //           curNode = curNode.getParent();
+  //           idx = pIdx.pop();
+  //           if (curNode.getKeyList().size() <= idx) {
+  //             continue;
+  //           }
+  //         } else {
+  //           idx++;
+  //         }
+  //       } else {
+  //         // Leaf Node 가 아닐때
+  //         if (curNode.getKeyList().size() == idx) {
+  //           curNode = curNode.getParent();
+  //           idx = pIdx.pop();
+  //         } else {
+  //           curNode = curNode.getChildren().get(idx + 1);
+  //           pIdx.push(idx + 1);
+  //           idx = 0;
+  //           if (idx == curNode.getKeyList().size()) {
+  //             continue;
+  //           }
+  //         }
+  //       }
+  //       if (curNode.getKeyList().size() > idx) {
+  //         if (curNode.getKeyList().get(idx) >= prev) {
+  //           prev = curNode.getKeyList().get(idx);
+  //           break;
+  //         }
+  //       }
+  //       if (curNode.getKeyList().size() == idx) {
+  //         curNode = null;
+  //         break;
+  //       }
+  //     }
+  //     return result;
+  //   }
+  // }
+  class treeIterator implements Iterator<Integer> {
 
     FiveWayBTreeNode curNode;
     int idx;
-    Stack<Integer> pIdx = new Stack<Integer>();
-    int prev;
 
-    treeIterator() { // 시작점 : 최소값
+    public treeIterator() { // 시작점 : 최소값
       curNode = root;
       while (!curNode.isLeaf) {
-        pIdx.push(0);
         curNode = curNode.getChildren().get(0);
+        idx = 0;
       }
-      prev = curNode.getKeyList().get(0);
-      idx = 0;
     }
 
     public boolean hasNext() {
-      if (prev == last()) {
+      if (curNode == null) {
         return false;
       }
       return true;
     }
 
-    public Integer next() {
-      int result = prev;
-      // while (prev >= curNode.getKeyList().get(idx)) {
-      //   if (curNode.isLeaf) {
-      //     if (curNode.getKeyList().size() == idx + 1) {
-      //       // 부모 이동
-      //       curNode = curNode.getParent();
-      //       idx = pIdx.pop() + 1;
-      //       System.out.println(idx);
-      //       // idx = pIdx.pop();
-      //     } else {
-      //       // Key 이동
-      //       idx++;
-      //     }
-      //   } else {
-      //     //자식으로 이동
-      //     curNode = curNode.getChildren().get(idx + 1);
-      //     pIdx.push(idx);
-      //     idx = 0;
-      //   }
-      // }
-      // while (true) {
-      //   if (curNode.getKeyList().get(idx) > prev) {
-      //     break;
-      //   }
-      //   if (curNode.getKeyList().size() == idx) {
-      //     //부모로 이동
-      //     curNode = curNode.getParent();
-      //     idx = pIdx.pop();
-      //   } else {
-      //     if (!curNode.isLeaf) {
-      //       curNode = curNode.getChildren().get(idx + 1);
-      //       pIdx.push(idx + 1);
-      //     } else {
-      //       idx++;
-      //     }
-      //   }
-      // }
-      while (true) {
-        if (curNode.isLeaf) {
-          if (curNode.getKeyList().size() <= idx + 1) {
-            System.out.println("In 1");
-            curNode = curNode.getParent();
-            idx = pIdx.pop();
-            System.out.printf("[pop index] %d\n", idx);
-            if (curNode.getKeyList().size() <= idx) {
-              System.out.println("In 5");
-              continue;
-            }
-          } else {
-            System.out.println("In 2");
-            idx++;
-          }
-        } else {
-          if (curNode.getKeyList().size() == idx) {
-            System.out.println("In 3");
-            curNode = curNode.getParent();
-            idx = pIdx.pop();
-          } else {
-            System.out.println("In 4");
-            curNode = curNode.getChildren().get(idx + 1);
-            pIdx.push(idx + 1);
-            idx = 0;
-            if (idx == curNode.getKeyList().size()) {
-              continue;
-            }
-          }
+    public void moveIdx() {
+      if (!curNode.isLeaf && curNode.getChildren().size() > idx) {
+        // 자식 이동
+        curNode = curNode.getChildren().get(idx);
+        idx = 0;
+        if (!curNode.isLeaf) {
+          moveIdx();
         }
-        if (curNode.getKeyList().get(idx) >= prev) {
-          break;
+      } else if (curNode.getKeyList().size() <= idx) {
+        // KeyList의 마지막이므로 부모 이동
+        if (curNode == root) {
+          // 현재 root일때
+          curNode = curNode.getParent();
+          return;
+        } else {
+          //부모 이동
+          idx = curNode.getParent().getChildren().indexOf(curNode); // 현재 자식이 몇번 째 자식인지
+          curNode = curNode.getParent();
+          if (curNode.getKeyList().size() <= idx) {
+            //이전 자식보다 다음 자식으로 이동
+            idx++;
+            moveIdx();
+          }
         }
       }
-      prev = curNode.getKeyList().get(idx);
-      System.out.printf("|%d|", prev);
+    }
+
+    public Integer next() {
+      Integer result = curNode.getKeyList().get(idx);
+      idx++;
+      moveIdx();
       return result;
     }
   }
