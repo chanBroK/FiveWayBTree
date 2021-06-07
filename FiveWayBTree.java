@@ -526,71 +526,7 @@ public class FiveWayBTree implements NavigableSet<Integer> {
     return null;
   }
 
-  // public class treeIterator implements Iterator<Integer> {
-
-  //   FiveWayBTreeNode curNode;
-  //   int idx;
-  //   Stack<Integer> pIdx = new Stack<Integer>();
-  //   int prev;
-
-  //   treeIterator() { // 시작점 : 최소값
-  //     curNode = root;
-  //     while (!curNode.isLeaf) {
-  //       pIdx.push(0);
-  //       curNode = curNode.getChildren().get(0);
-  //     }
-  //     prev = curNode.getKeyList().get(0);
-  //     idx = 0;
-  //   }
-
-  //   public boolean hasNext() {
-  //     if (curNode == null) {
-  //       return false;
-  //     }
-  //     return true;
-  //   }
-
-  //   public Integer next() {
-  //     int result = prev;
-  //     while (true) {
-  //       if (curNode.isLeaf) {
-  //         if (curNode.getKeyList().size() == idx + 1) {
-  //           curNode = curNode.getParent();
-  //           idx = pIdx.pop();
-  //           if (curNode.getKeyList().size() <= idx) {
-  //             continue;
-  //           }
-  //         } else {
-  //           idx++;
-  //         }
-  //       } else {
-  //         // Leaf Node 가 아닐때
-  //         if (curNode.getKeyList().size() == idx) {
-  //           curNode = curNode.getParent();
-  //           idx = pIdx.pop();
-  //         } else {
-  //           curNode = curNode.getChildren().get(idx + 1);
-  //           pIdx.push(idx + 1);
-  //           idx = 0;
-  //           if (idx == curNode.getKeyList().size()) {
-  //             continue;
-  //           }
-  //         }
-  //       }
-  //       if (curNode.getKeyList().size() > idx) {
-  //         if (curNode.getKeyList().get(idx) >= prev) {
-  //           prev = curNode.getKeyList().get(idx);
-  //           break;
-  //         }
-  //       }
-  //       if (curNode.getKeyList().size() == idx) {
-  //         curNode = null;
-  //         break;
-  //       }
-  //     }
-  //     return result;
-  //   }
-  // }
+  
   class treeIterator implements Iterator<Integer> {
 
     FiveWayBTreeNode curNode;
@@ -611,13 +547,13 @@ public class FiveWayBTree implements NavigableSet<Integer> {
       return true;
     }
 
-    public void moveIdx() {
+    public void movePointer() {
       if (!curNode.isLeaf && curNode.getChildren().size() > idx) {
         // 자식 이동
         curNode = curNode.getChildren().get(idx);
         idx = 0;
         if (!curNode.isLeaf) {
-          moveIdx();
+          movePointer();
         }
       } else if (curNode.getKeyList().size() <= idx) {
         // KeyList의 마지막이므로 부모 이동
@@ -632,7 +568,7 @@ public class FiveWayBTree implements NavigableSet<Integer> {
           if (curNode.getKeyList().size() <= idx) {
             //이전 자식보다 다음 자식으로 이동
             idx++;
-            moveIdx();
+            movePointer();
           }
         }
       }
@@ -641,7 +577,7 @@ public class FiveWayBTree implements NavigableSet<Integer> {
     public Integer next() {
       Integer result = curNode.getKeyList().get(idx);
       idx++;
-      moveIdx();
+      movePointer();
       return result;
     }
   }
@@ -698,7 +634,7 @@ public class FiveWayBTree implements NavigableSet<Integer> {
     NavigableSet<Integer> result = new TreeSet<Integer>();
     while (iter.hasNext()) {
       Integer x = iter.next();
-      if (x < toElement) {
+      if (x <= toElement) {
         result.add(x);
       }
     }
