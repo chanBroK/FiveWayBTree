@@ -1,14 +1,14 @@
 import java.util.*;
-
-// 과제4는 size first last iterator ceiling floor 이며
-// 과제5는 headSet tailSet remove 이다.
 // https://velog.io/@seanlion/btreeimplementation
+// Merge 함수를 따로 만들자
+// 1. Key Child 이동 + parnet 까지 고려
+
 public class FiveWayBTree implements NavigableSet<Integer> {
 
   final int m = 5;
   final int max_children = m;
   final int max_keys = m - 1;
-  final int min_keys = (int) (Math.ceil(m / 2)) - 1; // 최소 #키 구하는 식
+  final int min_keys = (int) (Math.ceil((double) m / 2)) - 1; // 최소 #키 구하는 식
 
   private FiveWayBTreeNode root;
   private int size;
@@ -62,6 +62,7 @@ public class FiveWayBTree implements NavigableSet<Integer> {
   public FiveWayBTreeNode createNode(int val) {
     //추후 생성자로 넘기자
     FiveWayBTreeNode newNode = new FiveWayBTreeNode();
+    newNode.isLeaf = false;
     newNode.getKeyList().add(val);
     return newNode;
   }
@@ -155,8 +156,7 @@ public class FiveWayBTree implements NavigableSet<Integer> {
     if (node == null) {
       System.out.println("Empty");
     } else {
-      System.out.printf("Level %d /parent ", level);
-      System.out.println(node.getParent());
+      System.out.printf("Level %d ", level);
       for (int i = 0; i < node.getKeyList().size(); i++) {
         System.out.printf("|%d|", node.getKeyList().get(i));
       }
@@ -166,6 +166,55 @@ public class FiveWayBTree implements NavigableSet<Integer> {
         printTree(node.getChildren().get(i), level);
       }
     }
+  }
+
+  public Integer getPLV(FiveWayBTreeNode node) {
+    int pIdx = node.getParent().getChildren().indexOf(node) - 1;
+    if (pIdx < 0) {
+      return null;
+    }
+    return node.getParent().getKeyList().get(pIdx);
+  }
+
+  public FiveWayBTreeNode getLS(FiveWayBTreeNode node) {
+    if (getPLV(node) == null) {
+      return null;
+    }
+    int pIdx = node.getParent().getChildren().indexOf(node) - 1;
+    return node.getParent().getChildren().get(pIdx);
+  }
+
+  public Integer getLV(FiveWayBTreeNode node) {
+    if (getLS(node) == null) {
+      return null;
+    }
+    int pIdx = node.getParent().getChildren().indexOf(node) - 1;
+    int size = node.getParent().getChildren().get(pIdx).getKeyList().size();
+    return node.getParent().getChildren().get(pIdx).getKeyList().get(size - 1);
+  }
+
+  public Integer getPRV(FiveWayBTreeNode node) {
+    int pIdx = node.getParent().getChildren().indexOf(node);
+    if (pIdx == node.getParent().getKeyList().size()) {
+      return null;
+    }
+    return node.getParent().getKeyList().get(pIdx);
+  }
+
+  public FiveWayBTreeNode getRS(FiveWayBTreeNode node) {
+    if (getPRV(node) == null) {
+      return null;
+    }
+    int pIdx = node.getParent().getChildren().indexOf(node) + 1;
+    return node.getParent().getChildren().get(pIdx);
+  }
+
+  public Integer getRV(FiveWayBTreeNode node) {
+    if (getRS(node) == null) {
+      return null;
+    }
+    int pIdx = node.getParent().getChildren().indexOf(node) + 1;
+    return node.getParent().getChildren().get(pIdx).getKeyList().get(0);
   }
 
   // 내장 오버라이딩 함수
@@ -237,9 +286,150 @@ public class FiveWayBTree implements NavigableSet<Integer> {
     return false;
   }
 
+  public void reorganize(FiveWayBTreeNode node) {
+    if (node == null) {
+      return;
+    }
+    if (node != root && node.getKeyList().size() < min_keys) {
+      FiveWayBTreeNode LS = getLS(node);
+      FiveWayBTreeNode RS = getRS(node);
+      FiveWayBTreeNode P = node.getParent();
+      printTree(root, 1);
+      System.out.println("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
+      if (LS != null && LS.getKeyList().size() >= min_keys + 1) {
+        //LS 이용해서 재구성
+        // PLV move to T
+        Integer plv = getPLV(node);
+        Integer lv = getLV(node);
+        node.getKeyList().add(plv);
+        // LV move to PLV
+        P.getKeyList().set(P.getChildren().indexOf(node) - 1, lv);
+        // reduce overlap
+        LS.getKeyList().remove((Object) lv);
+        P.getKeyList().remove((Object) plv);
+      } else if (RS != null && RS.getKeyList().size() >= min_keys + 1) {
+        // RS 이용해서 재구성
+        // PRV move to T
+        Integer prv = getPRV(node);
+        Integer rv = getRV(node);
+        node.getKeyList().add(prv);
+        // RV move to P
+        P.getKeyList().set(P.getChildren().indexOf(node), rv);
+        //reduce overlap
+        P.getKeyList().remove((Object) prv);
+        RS.getKeyList().remove((Object) rv);
+      } else {
+        // 부모 최소키 위배
+        FiveWayBTreeNode newNode = new FiveWayBTreeNode();
+        if (LS != null) {
+          // Merge With LS
+          for (int i = 0; i < LS.getKeyList().size(); i++) {
+            newNode.getKeyList().add(LS.getKeyList().get(i));
+          }
+          for (int i = 0; i < LS.getChildren().size(); i++) {
+            newNode.getChildren().add(LS.getChildren().get(i));
+          }
+          int plv = getPLV(node);
+          newNode.getKeyList().add(plv);
+          P.getKeyList().remove((Object) plv);
+          for (int i = 0; i < node.getKeyList().size(); i++) {
+            newNode.getKeyList().add(node.getKeyList().get(i));
+          }
+          for (int i = 0; i < node.getChildren().size(); i++) {
+            newNode.getChildren().add(node.getChildren().get(i));
+          }
+          if (P.getKeyList().size() == 0) {
+            newNode.setParent(P.getParent());
+            root = newNode;
+          } else {
+            newNode.setParent(P);
+            P.getChildren().set(P.getChildren().indexOf(node), newNode);
+            P.getChildren().remove(LS);
+            reorganize(P);
+          }
+        } else {
+          // Merge With RS
+          for (int i = 0; i < node.getKeyList().size(); i++) {
+            newNode.getKeyList().add(node.getKeyList().get(i));
+          }
+          for (int i = 0; i < node.getChildren().size(); i++) {
+            newNode.getChildren().add(node.getChildren().get(i));
+          }
+          int prv = getPRV(node);
+          newNode.getKeyList().add(prv);
+          P.getKeyList().remove((Object) prv);
+          for (int i = 0; i < RS.getKeyList().size(); i++) {
+            newNode.getKeyList().add(RS.getKeyList().get(i));
+          }
+          for (int i = 0; i < RS.getChildren().size(); i++) {
+            newNode.getChildren().add(RS.getChildren().get(i));
+          }
+          if (P.getKeyList().size() == 0) {
+            newNode.setParent(P.getParent());
+            root = newNode;
+          } else {
+            newNode.setParent(P);
+            P.getChildren().set(P.getChildren().indexOf(node) + 1, newNode);
+            P.getChildren().remove(RS);
+            reorganize(P);
+          }
+        }
+      }
+    } else if (node == root && node.isLeaf) {
+      return;
+    }
+    return;
+  }
+
+  public FiveWayBTreeNode getLC(FiveWayBTreeNode node, int idx) {
+    FiveWayBTreeNode t = node.getChildren().get(idx);
+    while (!t.isLeaf) {
+      System.out.println(t.getKeyList());
+      t = t.getChildren().get(t.getChildren().size() - 1);
+    }
+    return t;
+  }
+
+  public FiveWayBTreeNode getRC(FiveWayBTreeNode node, int idx) {
+    FiveWayBTreeNode t = node.getChildren().get(idx + 1);
+    while (!t.isLeaf) {
+      t = t.getChildren().get(0);
+    }
+    return t;
+  }
+
   @Override
   public boolean remove(Object o) {
-    return false;
+    FiveWayBTreeNode node = searchNode((int) o);
+    if (node == null) {
+      System.out.println("Not Found In Remove");
+      return false;
+    }
+    size--;
+    if (node.isLeaf) {
+      node.getKeyList().remove(o);
+      reorganize(node);
+    } else {
+      int idx = node.getKeyList().indexOf((Object) o);
+      FiveWayBTreeNode LC = getLC(node, idx);
+      FiveWayBTreeNode RC = getRC(node, idx);
+      node.getKeyList().remove(o);
+      if (LC.getKeyList().size() >= min_keys + 1) {
+        Integer LV = LC.getKeyList().get(LC.getKeyList().size() - 1);
+        node.getKeyList().add(idx, LV);
+        LC.getKeyList().remove((Object) LV);
+      } else if (RC.getKeyList().size() >= min_keys + 1) {
+        Integer RV = RC.getKeyList().get(0);
+        node.getKeyList().add(idx, RV);
+        RC.getKeyList().remove((Object) RV);
+      } else {
+        Integer LV = LC.getKeyList().get(LC.getKeyList().size() - 1);
+        node.getKeyList().add(idx, LV);
+        LC.getKeyList().remove((Object) LV);
+        reorganize(LC);
+      }
+    }
+    return true;
   }
 
   @Override
@@ -281,13 +471,17 @@ public class FiveWayBTree implements NavigableSet<Integer> {
   @Override
   public Integer floor(Integer e) {
     // e 보다 작은 최대값
-    Integer max = first();
+    Integer max = null;
     Iterator<Integer> iter = iterator();
     while (iter.hasNext()) {
       int t = iter.next();
       if (t <= e) {
-        if (max <= t) {
+        if (max == null) {
           max = t;
+        } else {
+          if (max <= t) {
+            max = t;
+          }
         }
       }
     }
@@ -297,13 +491,17 @@ public class FiveWayBTree implements NavigableSet<Integer> {
   @Override
   public Integer ceiling(Integer e) {
     // e 보다 큰 최소값
-    Integer min = last();
+    Integer min = null;
     Iterator<Integer> iter = iterator();
     while (iter.hasNext()) {
       int t = iter.next();
       if (t >= e) {
-        if (min >= t) {
+        if (min == null) {
           min = t;
+        } else {
+          if (min >= t) {
+            min = t;
+          }
         }
       }
     }
@@ -407,7 +605,7 @@ public class FiveWayBTree implements NavigableSet<Integer> {
     }
 
     public boolean hasNext() {
-      if (curNode == null) {
+      if (curNode == null || size == 0) {
         return false;
       }
       return true;
@@ -496,13 +694,26 @@ public class FiveWayBTree implements NavigableSet<Integer> {
 
   @Override
   public SortedSet<Integer> headSet(Integer toElement) {
-    // TODO Auto-generated method stub
-    return null;
+    Iterator<Integer> iter = iterator();
+    NavigableSet<Integer> result = new TreeSet<Integer>();
+    while (iter.hasNext()) {
+      Integer x = iter.next();
+      if (x < toElement) {
+        result.add(x);
+      }
+    }
+    return result;
   }
 
   @Override
   public SortedSet<Integer> tailSet(Integer fromElement) {
-    // TODO Auto-generated method stub
-    return null;
+    Iterator<Integer> iter = iterator();
+    NavigableSet<Integer> result = new TreeSet<Integer>();
+    while (iter.hasNext()) {
+      Integer x = iter.next();
+      if (x >= fromElement) {
+        result.add(x); 
+    }
+    return result;
   }
 }

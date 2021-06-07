@@ -4,10 +4,10 @@ public class test_part1 {
 
   public static void main(String[] args) {
     ArrayList<Integer> arr = null;
-    for (int k = 0; k < 10000; k++) {
+    for (int k = 0; k < 20000; k++) {
       ArrayList<Integer> list = new ArrayList<Integer>();
       Random r = new Random();
-      for (int i = 0; i < 100; i++) {
+      for (int i = 0; i < 200; i++) {
         list.add(r.nextInt(10000));
       }
       NavigableSet<Integer> treeSet = new TreeSet<Integer>();
@@ -89,6 +89,54 @@ public class test_part1 {
           treeSet.floor(pivot) == null && yourBTree.floor(pivot) == null
         ) isPass = true;
       }
+
+      Iterator<Integer> treeHeadIterator = treeSet.headSet(pivot).iterator();
+      Iterator<Integer> yourBTtreeHeadIterator = yourBTree
+        .headSet(pivot)
+        .iterator();
+      isPass = true;
+      while (treeHeadIterator.hasNext() && yourBTtreeHeadIterator.hasNext()) {
+        if (!treeHeadIterator.next().equals(yourBTtreeHeadIterator.next())) {
+          isPass = false;
+          break;
+        }
+      }
+      if (isPass == false) {
+        System.out.println("headSet test: " + isPass);
+        arr = list;
+      }
+      Iterator<Integer> treeTailIterator = treeSet.tailSet(pivot).iterator();
+      Iterator<Integer> yourBTtreeTailIterator = yourBTree
+        .tailSet(pivot)
+        .iterator();
+      isPass = true;
+      while (treeTailIterator.hasNext() && yourBTtreeTailIterator.hasNext()) {
+        if (!treeTailIterator.next().equals(yourBTtreeTailIterator.next())) {
+          isPass = false;
+          break;
+        }
+      }
+      if (isPass == false) {
+        System.out.println("tailSet test: " + isPass);
+
+        arr = list;
+        break;
+      }
+      // for (int i = 0; i < list.size() / 2; i++) {
+      //   treeSet.remove(list.get(i));
+      //   yourBTree.remove(list.get(i));
+      // }
+      // isPass = true;
+      // while (treeIterator.hasNext() && yourBTreeIterator.hasNext()) {
+      //   if (!treeIterator.next().equals(yourBTreeIterator.next())) {
+      //     isPass = false;
+      //     break;
+      //   }
+      // }
+      // if (isPass == false) {
+      //   System.out.println("remove test: " + isPass);
+      //   arr = list;
+      // }
     }
     System.out.println(arr);
   }

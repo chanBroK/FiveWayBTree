@@ -16,7 +16,7 @@ public class FiveWayBTreeNode {
   public FiveWayBTreeNode() {
     keyList = new ArrayList<Integer>();
     children = new ArrayList<FiveWayBTreeNode>();
-    isLeaf = false;
+    isLeaf = true;
     parent = null;
   }
 
