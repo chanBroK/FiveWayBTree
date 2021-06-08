@@ -122,21 +122,21 @@ public class test_part1 {
         arr = list;
         break;
       }
-      // for (int i = 0; i < list.size() / 2; i++) {
-      //   treeSet.remove(list.get(i));
-      //   yourBTree.remove(list.get(i));
-      // }
-      // isPass = true;
-      // while (treeIterator.hasNext() && yourBTreeIterator.hasNext()) {
-      //   if (!treeIterator.next().equals(yourBTreeIterator.next())) {
-      //     isPass = false;
-      //     break;
-      //   }
-      // }
-      // if (isPass == false) {
-      //   System.out.println("remove test: " + isPass);
-      //   arr = list;
-      // }
+      for (int i = 0; i < list.size() / 2; i++) {
+        treeSet.remove(list.get(i));
+        yourBTree.remove(list.get(i));
+      }
+      isPass = true;
+      while (treeIterator.hasNext() && yourBTreeIterator.hasNext()) {
+        if (!treeIterator.next().equals(yourBTreeIterator.next())) {
+          isPass = false;
+          break;
+        }
+      }
+      if (isPass == false) {
+        System.out.println("remove test: " + isPass);
+        arr = list;
+      }
     }
     System.out.println(arr);
   }

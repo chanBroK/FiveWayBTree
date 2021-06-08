@@ -3,12 +3,12 @@ import java.util.*;
 public class test3 {
 
   public static void main(String[] args) {
-    for (int k = 0; k < 20000; k++) {
+    for (int k = 0; k < 10000; k++) {
       ArrayList<Integer> list = new ArrayList<Integer>();
       ArrayList<Integer> removeList = new ArrayList<Integer>();
       Random r = new Random();
       for (int i = 0; i < 200; i++) {
-        list.add(r.nextInt(10000));
+        list.add(r.nextInt(300));
       }
       NavigableSet<Integer> treeSet = new TreeSet<Integer>();
       for (Integer val : list) {
