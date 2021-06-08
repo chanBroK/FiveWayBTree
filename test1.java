@@ -37,13 +37,14 @@ public class test1 {
     //   97,
     //   99,
     // };
-    int max = 20;
+    int max = 50;
     for (int i = 0; i < max; i++) {
       my.add(i);
       // my.add(a[i]);
     }
+    // System.out.println("[[[[Initial]]]]");
     my.printTree(my.getRoot(), 1);
-    System.out.println("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
+    // System.out.println("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
     // System.out.println(my.size());
     // System.out.println(my.isEmpty());
     // System.out.println(my.first());
@@ -60,16 +61,35 @@ public class test1 {
     // for (int i = 0; i < a.length; i++) {
     //   my.insert(a[i]);
     // }
-
+    // Scanner sc = new Scanner(System.in);
+    List<Integer> xList = new ArrayList<Integer>();
+    // while (my.size() != 0) {
+    //   int x = sc.nextInt();
+    //   System.out.println("[[[[remove : " + x + "]]]]");
+    //   xList.add(x);
+    //   System.out.println(xList);
+    //   my.remove(x);
+    //   my.printTree(my.getRoot(), 1);
+    //   System.out.println("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
+    // }
+    System.out.println("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
     for (int i = 0; i < max / 2; i++) {
       int t = r.nextInt(max);
-      System.out.println("remove : " + t);
+      xList.add(t);
+      System.out.println("remove list" + xList);
       my.remove(t);
-      my.printTree(my.getRoot(), 1);
     }
+    my.printTree(my.getRoot(), 1);
+    System.out.println("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
     Iterator<Integer> iter = my.iterator();
     while (iter.hasNext()) {
-      System.out.printf("|%d|", iter.next());
+      // iter.next();
+      Integer x = iter.next();
+      if (x == null) {
+        break;
+      } else {
+        System.out.printf("|%d|", x);
+      }
     }
   }
 }

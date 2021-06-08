@@ -1,4 +1,5 @@
 import java.util.*;
+
 // https://velog.io/@seanlion/btreeimplementation
 // Merge 함수를 따로 만들자
 // 1. Key Child 이동 + parnet 까지 고려
@@ -217,6 +218,23 @@ public class FiveWayBTree implements NavigableSet<Integer> {
     return node.getParent().getChildren().get(pIdx).getKeyList().get(0);
   }
 
+  public FiveWayBTreeNode getLC(FiveWayBTreeNode node, int idx) {
+    FiveWayBTreeNode t = node.getChildren().get(idx);
+    while (!t.isLeaf) {
+      System.out.println(t.getKeyList());
+      t = t.getChildren().get(t.getChildren().size() - 1);
+    }
+    return t;
+  }
+
+  public FiveWayBTreeNode getRC(FiveWayBTreeNode node, int idx) {
+    FiveWayBTreeNode t = node.getChildren().get(idx + 1);
+    while (!t.isLeaf) {
+      t = t.getChildren().get(0);
+    }
+    return t;
+  }
+
   // 내장 오버라이딩 함수
   @Override
   public Comparator<? super Integer> comparator() {
@@ -286,149 +304,218 @@ public class FiveWayBTree implements NavigableSet<Integer> {
     return false;
   }
 
-  public void reorganize(FiveWayBTreeNode node) {
-    if (node == null) {
-      return;
+  public void mergeNode(FiveWayBTreeNode node, int rpos, int lpos) {
+    //무조건 왼쪽 노드 기준으로 머지
+    node.getChildren().get(lpos).getKeyList().add(node.getKeyList().get(lpos)); // add PV
+    node
+      .getChildren()
+      .get(lpos)
+      .getKeyList()
+      .addAll(node.getChildren().get(rpos).getKeyList()); // add RS Key
+    node
+      .getChildren()
+      .get(lpos)
+      .getChildren()
+      .addAll(node.getChildren().get(rpos).getChildren()); // add RS children
+    // 현재 부모노드 재정비
+    node.getChildren().remove(rpos);
+    node.getKeyList().remove(lpos);
+  }
+
+  public void borrowFromLeft(FiveWayBTreeNode node, int pos) {
+    node
+      .getChildren()
+      .get(pos)
+      .getKeyList()
+      .add(0, node.getKeyList().get(pos - 1)); // PLV -> T
+    int size = node.getChildren().get(pos - 1).getKeyList().size();
+    node
+      .getKeyList()
+      .set(pos - 1, node.getChildren().get(pos - 1).getKeyList().get(size - 1)); // LV -> PLV
+    node.getChildren().get(pos - 1).getKeyList().remove(size - 1);
+
+    if (node.getChildren().get(pos - 1).getChildren().size() > 0) {
+      //children 옮기기
+      size = node.getChildren().get(pos - 1).getChildren().size();
+      node
+        .getChildren()
+        .get(pos)
+        .getChildren()
+        .add(0, node.getChildren().get(pos - 1).getChildren().get(size - 1));
+      node
+        .getChildren()
+        .get(pos - 1)
+        .getChildren()
+        .get(size - 1)
+        .setParent(node);
+      node.getChildren().get(pos - 1).getChildren().remove(size - 1);
     }
-    if (node != root && node.getKeyList().size() < min_keys) {
-      FiveWayBTreeNode LS = getLS(node);
-      FiveWayBTreeNode RS = getRS(node);
-      FiveWayBTreeNode P = node.getParent();
-      printTree(root, 1);
-      System.out.println("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
-      if (LS != null && LS.getKeyList().size() >= min_keys + 1) {
-        //LS 이용해서 재구성
-        // PLV move to T
-        Integer plv = getPLV(node);
-        Integer lv = getLV(node);
-        node.getKeyList().add(plv);
-        // LV move to PLV
-        P.getKeyList().set(P.getChildren().indexOf(node) - 1, lv);
-        // reduce overlap
-        LS.getKeyList().remove((Object) lv);
-        P.getKeyList().remove((Object) plv);
-      } else if (RS != null && RS.getKeyList().size() >= min_keys + 1) {
-        // RS 이용해서 재구성
-        // PRV move to T
-        Integer prv = getPRV(node);
-        Integer rv = getRV(node);
-        node.getKeyList().add(prv);
-        // RV move to P
-        P.getKeyList().set(P.getChildren().indexOf(node), rv);
-        //reduce overlap
-        P.getKeyList().remove((Object) prv);
-        RS.getKeyList().remove((Object) rv);
-      } else {
-        // 부모 최소키 위배
-        FiveWayBTreeNode newNode = new FiveWayBTreeNode();
-        if (LS != null) {
-          // Merge With LS
-          for (int i = 0; i < LS.getKeyList().size(); i++) {
-            newNode.getKeyList().add(LS.getKeyList().get(i));
-          }
-          for (int i = 0; i < LS.getChildren().size(); i++) {
-            newNode.getChildren().add(LS.getChildren().get(i));
-          }
-          int plv = getPLV(node);
-          newNode.getKeyList().add(plv);
-          P.getKeyList().remove((Object) plv);
-          for (int i = 0; i < node.getKeyList().size(); i++) {
-            newNode.getKeyList().add(node.getKeyList().get(i));
-          }
-          for (int i = 0; i < node.getChildren().size(); i++) {
-            newNode.getChildren().add(node.getChildren().get(i));
-          }
-          if (P.getKeyList().size() == 0) {
-            newNode.setParent(P.getParent());
-            root = newNode;
-          } else {
-            newNode.setParent(P);
-            P.getChildren().set(P.getChildren().indexOf(node), newNode);
-            P.getChildren().remove(LS);
-            reorganize(P);
-          }
-        } else {
-          // Merge With RS
-          for (int i = 0; i < node.getKeyList().size(); i++) {
-            newNode.getKeyList().add(node.getKeyList().get(i));
-          }
-          for (int i = 0; i < node.getChildren().size(); i++) {
-            newNode.getChildren().add(node.getChildren().get(i));
-          }
-          int prv = getPRV(node);
-          newNode.getKeyList().add(prv);
-          P.getKeyList().remove((Object) prv);
-          for (int i = 0; i < RS.getKeyList().size(); i++) {
-            newNode.getKeyList().add(RS.getKeyList().get(i));
-          }
-          for (int i = 0; i < RS.getChildren().size(); i++) {
-            newNode.getChildren().add(RS.getChildren().get(i));
-          }
-          if (P.getKeyList().size() == 0) {
-            newNode.setParent(P.getParent());
-            root = newNode;
-          } else {
-            newNode.setParent(P);
-            P.getChildren().set(P.getChildren().indexOf(node) + 1, newNode);
-            P.getChildren().remove(RS);
-            reorganize(P);
-          }
-        }
+  }
+
+  public void borrowFromRight(FiveWayBTreeNode node, int pos) { // 부모 노드와 현재 노드 pos위치를 인자로 받음. 이미 현재 노드의 키는 지워졌음. cnt_key는 최소상태 혹은 미만일거임.
+    node.getChildren().get(pos).getKeyList().add(node.getKeyList().get(pos)); // PRV -> T
+    node
+      .getKeyList()
+      .set(pos, node.getChildren().get(pos + 1).getKeyList().get(0)); //  RV -> PRV
+    node.getChildren().get(pos + 1).getKeyList().remove(0);
+    if (node.getChildren().get(pos + 1).getChildren().size() > 0) { // RV에 child가 있다면
+      // children 옮기기
+      node
+        .getChildren()
+        .get(pos)
+        .getChildren()
+        .add(node.getChildren().get(pos + 1).getChildren().get(0));
+      node.getChildren().get(pos + 1).getChildren().get(0).setParent(node);
+      node.getChildren().get(pos + 1).getChildren().remove(0);
+    }
+  }
+
+  public void balancing(FiveWayBTreeNode node, int pos) { // 현재 노드와 자식노드에서의 위치를 인자로 받는 함수(빌리기,병합을 진행)
+    if (pos == 0) { // 자식노드 키 위치가 맨 왼쪽일때는 오른쪽 부모,형제를 봐야 함.
+      if (node.getChildren().get(pos + 1).getKeyList().size() > min_keys) { // (자식노드 기준) 형제의 키개수가 최소숫자 범위 안 부서질때
+        borrowFromRight(node, pos);
+      } else { // 형제의 키개수가 최소숫자 범위 부서질때
+        mergeNode(node, pos + 1, pos); // 부모노드(현재노드)와 자신 위치랑 자기 형제 위치를 같이 넘겨줌.
       }
-    } else if (node == root && node.isLeaf) {
+      return;
+    } else if (pos == node.getKeyList().size()) { // 자식노드 키 위치가 맨 오른쪽일 때는 왼쪽 부모, 형제 봐야 함.
+      if (node.getChildren().get(pos - 1).getKeyList().size() > min_keys) { // 자식노드 기준, 왼쪽 형제의 키개수가 최소숫자 범위 안 부서질 때
+        borrowFromLeft(node, pos);
+      } else { // 최소숫자 범위 부서질 때
+        mergeNode(node, pos, pos - 1); // 부모노드(현재노드)와 지우는 노드랑 병합대상 노드 위치를 같이 넘겨줌.
+      }
+      return;
+    } else { // 맨 왼쪽,맨 오른쪽 말고 그 이외
+      if (node.getChildren().get(pos - 1).getKeyList().size() > min_keys) {
+        borrowFromLeft(node, pos);
+      } else if (
+        node.getChildren().get(pos + 1).getKeyList().size() > min_keys
+      ) {
+        borrowFromRight(node, pos);
+      } else {
+        mergeNode(node, pos, pos - 1); // 극단에 있는 자식 말고 그 외 지역에 위치한 노드들이 병합할 때
+      }
       return;
     }
-    return;
   }
 
-  public FiveWayBTreeNode getLC(FiveWayBTreeNode node, int idx) {
-    FiveWayBTreeNode t = node.getChildren().get(idx);
-    while (!t.isLeaf) {
-      System.out.println(t.getKeyList());
-      t = t.getChildren().get(t.getChildren().size() - 1);
+  int findLV(FiveWayBTreeNode node) {
+    if (node.isLeaf) { //현재 탐색노드가 리프이면, 찾을 수 있음.
+      return node.getKeyList().get(node.getKeyList().size() - 1); //현재 노드에서 가장 큰 키 주면 됨
     }
-    return t;
+    return findLV(node.getChildren().get(node.getChildren().size() - 1)); // 탐색할 때마다 큰 쪽 자식으로 탐색해야 함.
   }
 
-  public FiveWayBTreeNode getRC(FiveWayBTreeNode node, int idx) {
-    FiveWayBTreeNode t = node.getChildren().get(idx + 1);
-    while (!t.isLeaf) {
-      t = t.getChildren().get(0);
+  int findRV(FiveWayBTreeNode node) {
+    if (node.isLeaf) { //현재 탐색노드가 리프이면, 찾을 수 있음.
+      return node.getKeyList().get(0); //현재 노드에서 가장 작은 키 주면 됨
     }
-    return t;
+    return findLV(node.getChildren().get(0)); // 탐색할 때마다 작은 쪽 자식으로 탐색해야 함.
+  }
+
+  public void mergeChildNode(FiveWayBTreeNode node, int pos) {
+    // merge는 왼쪽 기준으로 하는데 자식노드에서 합쳐질 위치 지정.
+    // 바로 지우지 않고 합치려고 하는 노드에 지우려고 하는 부모노드(내부노드)의 값을 합침. 왜냐? 안 내리고 바로 지우고 자식노드만 합치면, 합치려고 하는 노드 밑에 또 자식노드가 있을 경우에는 자식 1개가 떠버리게 됨.
+    // 그래서 일단 부모노드의 값을 넣고 거기서 또 재귀로 들어가서 그 자식을 합치던가 빌리던가 해서 자식수를 해결해야 함.
+    // merge P
+    int val = node.getKeyList().get(pos);
+    node.getChildren().get(pos).getKeyList().add(val);
+    // merge S
+    node
+      .getChildren()
+      .get(pos)
+      .getKeyList()
+      .addAll(node.getChildren().get(pos + 1).getKeyList());
+    node
+      .getChildren()
+      .get(pos)
+      .getChildren()
+      .addAll(node.getChildren().get(pos + 1).getChildren());
+    //clear
+    node.getChildren().remove((Object) node.getChildren().get(pos + 1));
+    node.getKeyList().remove((Object) val);
+    System.out.println("++++++++");
+    printTree(node, 1);
+    System.out.println("++++++++");
+    // delVal(node.getChildren().get(pos), val); // 부모노드에서 내렸던 값을 지우기
+  }
+
+  public void delNotLeaf(FiveWayBTreeNode node, int pos) {
+    if (
+      node.getChildren().get(pos).getKeyList().size() >=
+      node.getChildren().get(pos + 1).getKeyList().size()
+    ) {
+      if (node.getChildren().get(pos).getKeyList().size() > min_keys) { // 자식 키개수가 최소범위 부시지 않으면 predecessor 찾기 가능.
+        int LV = findLV(node.getChildren().get(pos)); // predecessor를 재귀로 쭉 내려가서 찾는 함수 호출. 부모 노드랑 타고 내려갈 위치를 인자로 줌.
+        node.getKeyList().set(pos, LV); // 지우려고 하는 내부노드의 값에 찾은 LV로 대체 해줌.
+        delVal(node.getChildren().get(pos), LV); // 찾은 predecessor를 위로 올려야 함. 근데 이 과정이 결국 해당 리프노드에서 값을 지우는게 효과라서 삭제하는 함수 호출.
+      } else {
+        mergeChildNode(node, pos);
+      }
+    } else {
+      if (node.getChildren().get(pos + 1).getKeyList().size() > min_keys) {
+        int RV = findRV(node.getChildren().get(pos + 1));
+        node.getKeyList().set(pos, RV);
+        delVal(node.getChildren().get(pos + 1), RV); // RV
+      } else {
+        mergeChildNode(node, pos);
+      }
+    }
+  }
+
+  public boolean delVal(FiveWayBTreeNode node, int val) {
+    boolean flag = false; // 탐색 성공 여부
+    int pos;
+
+    for (pos = 0; pos < node.getKeyList().size(); pos++) { // val이 지워져야하니 그 위치를 찾아야 함.현재 노드의 키 개수만큼 탐색
+      if (val == node.getKeyList().get(pos)) { // 현재 노드의 키 배열에서 pos와 val이 같으면
+        flag = true; // 찾았다는 표시
+        break;
+      } else if (val < node.getKeyList().get(pos)) { // 키 배열의 pos 위치 값이 val보다 크면 그 위치에서 멈춰라. 거기에서 아래로 더 들어가야 한다.
+        break;
+      }
+    } // 이게 끝났다는건 그 노드에서 (추가 탐색할) pos위치가 정해졌다는 것
+    if (flag) { // flag가 true이면 실제로 삭제하는 작업 실시
+      if (node.isLeaf) { // 리프에서 삭제해야 하면
+        node.getKeyList().remove((Object) val);
+      } else { // 내부에서 삭제해야 하면
+        delNotLeaf(node, pos); //내부 노드의 값을 삭제하는 함수 제작. 현재 노드와 현재노드에서의 값 위치를 인자로 넘김.
+      }
+      return flag;
+    } else { // flag가 false이면(지우려는 값을 못찾은 것)
+      if (node.isLeaf) { //leaf 노드이면 트리에 값이 존재하지 않는 것
+        return flag;
+      } else { // 지우려는 값을 못 찾았는데 내부 노드이면 더 내려감.
+        flag = delVal(node.getChildren().get(pos), val); //val이랑 현재노드의 pos번째 자식 넘겨서 flag 받기
+      }
+    }
+    if (node.getChildren().get(pos).getKeyList().size() < min_keys) { // (재귀가 끝나서 다시 올라온뒤)삭제처리했던 자식 노드의 키 개수가 최소숫자 범위 부셔졌을 때
+      balancing(node, pos); // 빌리던, 병합하던 하는 함수 제작 (현재 노드와 자식노드의 pos위치를 인자로)
+    }
+
+    return flag;
+  }
+
+  public void delete(FiveWayBTreeNode node, int val) {
+    if (node == null) {
+      // cur node is Empty;
+      System.out.println("Empty[in delete]");
+      return;
+    }
+    if (delVal(node, val) == false) {
+      System.out.println("Not found value :" + val + "[in delete]");
+      return;
+    }
+    if (node.getKeyList().size() == 0) { // empty node
+      System.out.println("Empty Node" + node);
+      node = node.getChildren().get(0); // 노드가 가진 왼쪽 자식을 대입
+    }
+    root = node;
   }
 
   @Override
   public boolean remove(Object o) {
-    FiveWayBTreeNode node = searchNode((int) o);
-    if (node == null) {
-      System.out.println("Not Found In Remove");
-      return false;
-    }
-    size--;
-    if (node.isLeaf) {
-      node.getKeyList().remove(o);
-      reorganize(node);
-    } else {
-      int idx = node.getKeyList().indexOf((Object) o);
-      FiveWayBTreeNode LC = getLC(node, idx);
-      FiveWayBTreeNode RC = getRC(node, idx);
-      node.getKeyList().remove(o);
-      if (LC.getKeyList().size() >= min_keys + 1) {
-        Integer LV = LC.getKeyList().get(LC.getKeyList().size() - 1);
-        node.getKeyList().add(idx, LV);
-        LC.getKeyList().remove((Object) LV);
-      } else if (RC.getKeyList().size() >= min_keys + 1) {
-        Integer RV = RC.getKeyList().get(0);
-        node.getKeyList().add(idx, RV);
-        RC.getKeyList().remove((Object) RV);
-      } else {
-        Integer LV = LC.getKeyList().get(LC.getKeyList().size() - 1);
-        node.getKeyList().add(idx, LV);
-        LC.getKeyList().remove((Object) LV);
-        reorganize(LC);
-      }
-    }
+    delete(root, (int) o);
     return true;
   }
 
@@ -526,7 +613,6 @@ public class FiveWayBTree implements NavigableSet<Integer> {
     return null;
   }
 
-  
   class treeIterator implements Iterator<Integer> {
 
     FiveWayBTreeNode curNode;
@@ -563,10 +649,10 @@ public class FiveWayBTree implements NavigableSet<Integer> {
           return;
         } else {
           //부모 이동
-          idx = curNode.getParent().getChildren().indexOf(curNode); // 현재 자식이 몇번 째 자식인지
+          idx = curNode.getParent().getChildren().indexOf((Object) curNode); // 현재 자식이 몇번 째 자식인지
           curNode = curNode.getParent();
           if (curNode.getKeyList().size() <= idx) {
-            //이전 자식보다 다음 자식으로 이동
+            //다음 key로 이동
             idx++;
             movePointer();
           }
@@ -575,7 +661,19 @@ public class FiveWayBTree implements NavigableSet<Integer> {
     }
 
     public Integer next() {
-      Integer result = curNode.getKeyList().get(idx);
+      Integer result = null;
+      // try {
+      // if (curNode == root) {
+      //   // root 일 경우 idx == -1 -> idx = 0;
+      //   idx++;
+      // }
+      result = curNode.getKeyList().get(idx);
+      // } catch (Exception e) {
+      //   printTree(root, 1);
+      //   System.out.println("Error : " + e);
+      //   System.out.println(curNode.getKeyList());
+      //   System.out.println(idx);
+      // }
       idx++;
       movePointer();
       return result;
@@ -648,7 +746,8 @@ public class FiveWayBTree implements NavigableSet<Integer> {
     while (iter.hasNext()) {
       Integer x = iter.next();
       if (x >= fromElement) {
-        result.add(x); 
+        result.add(x);
+      }
     }
     return result;
   }
